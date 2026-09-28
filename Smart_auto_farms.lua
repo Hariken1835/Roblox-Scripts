@@ -22,8 +22,8 @@ end)
 local isAutoFarm = false
 local isFly = false
 local scanRadius = 200
-local farmSpeed = 80
-local flySpeed = 50
+local farmSpeed = 100
+local flySpeed = 500
 local flyConnection
 local noclipConnection
 
