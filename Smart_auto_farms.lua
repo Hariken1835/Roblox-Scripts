@@ -206,7 +206,7 @@ local function tweenToTarget(targetPart)
     local timeToTravel = dist / farmSpeed
     
     -- Trục Y = 10 giúp nhân vật đứng lơ lửng trên đầu, không sợ bị dính/kẹt vào quái
-    local targetCFrame = targetPart.CFrame + Vector3.new(0, 10, 0)
+    local targetCFrame = targetPart.CFrame + Vector3.new(0, 0, 6)
     local tween = TweenService:Create(rootPart, TweenInfo.new(timeToTravel, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
     tween:Play()
     
@@ -249,7 +249,7 @@ task.spawn(function()
                         
                         while isAutoFarm and _G.UltimateGuiLoaded and mob.Parent ~= nil and h.Health > 0 do
                             if rootPart and r then 
-                                rootPart.CFrame = r.CFrame + Vector3.new(0, 10, 0) -- Giữ khoảng cách trên đầu quái
+                                rootPart.CFrame = r.CFrame + Vector3.new(0, 0, 6) -- Giữ khoảng cách trên đầu quái
                             end
                             task.wait(0.1)
                         end
