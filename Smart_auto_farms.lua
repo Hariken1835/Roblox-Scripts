@@ -125,13 +125,24 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// Logic Fly + Xuyên tường (Noclip) tích hợp
+--// Logic Fly + Xuyên tường (Đã fix lỗi đứng im bị chìm xuống)
+--// Logic Fly + Xuyên tường (Đã fix triệt để lỗi chìm khi đứng im)
 local function toggleFly(state)
     isFly = state
     if isFly then
         flyBtn.Text = "Fly + Noclip: ON"
         flyBtn.TextColor3 = Color3.fromRGB(88, 101, 242)
         if humanoid then humanoid.PlatformStand = true end
+        
+        -- Thêm lực chống trọng lực (BodyVelocity) để giữ đứng im tuyệt đối trên không
+        local bg = rootPart:FindFirstChild("FlyBodyVelocity")
+        if not bg then
+            bg = Instance.new("BodyVelocity")
+            bg.Name = "FlyBodyVelocity"
+            bg.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bg.Velocity = Vector3.new(0, 0, 0)
+            bg.Parent = rootPart
+        end
         
         noclipConnection = RunService.Stepped:Connect(function()
             if character then
@@ -153,8 +164,16 @@ local function toggleFly(state)
             if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
             
-            rootPart.Velocity = moveDir * flySpeed
-            rootPart.CFrame = CFrame.new(rootPart.Position, rootPart.Position + cam.CFrame.LookVector)
+            local bodyVel = rootPart:FindFirstChild("FlyBodyVelocity")
+            if bodyVel then
+                if moveDir.Magnitude > 0 then
+                    bodyVel.Velocity = moveDir.Unit * flySpeed
+                    rootPart.CFrame = CFrame.new(rootPart.Position, rootPart.Position + cam.CFrame.LookVector)
+                else
+                    -- Triệt tiêu hoàn toàn vận tốc khi thả tay để đứng lơ lửng cố định
+                    bodyVel.Velocity = Vector3.new(0, 0, 0)
+                end
+            end
         end)
     else
         flyBtn.Text = "Fly + Noclip: OFF"
@@ -162,6 +181,10 @@ local function toggleFly(state)
         
         if flyConnection then flyConnection:Disconnect() end
         if noclipConnection then noclipConnection:Disconnect() end
+        
+        -- Xóa bỏ lực chống trọng lực khi tắt Fly
+        local bg = rootPart:FindFirstChild("FlyBodyVelocity")
+        if bg then bg:Destroy() end
         
         if humanoid then humanoid.PlatformStand = false end
         if rootPart then rootPart.Velocity = Vector3.new(0,0,0) end
@@ -176,7 +199,7 @@ local function toggleFly(state)
     end
 end
 
---// Hàm quét danh sách quái (Đã lọc sạch NPC máu 100)
+--// Hàm quét danh sách quái (Đã tối ưu phạm vi theo scanRadius để chống quá tải/lag map rộng)
 local function scanMobs()
     local mobsList = {}
     for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -199,14 +222,15 @@ local function scanMobs()
     return mobsList
 end
 
---// Hàm Tween Teleport đến quái (Đã nâng trục Y lên 10 đơn vị để không bị dính vào thân quái)
+--// Hàm Tween Teleport đến quái (Đứng sau lưng quái, cách 4 đơn vị)
 local function tweenToTarget(targetPart)
     if not rootPart or not targetPart then return end
     local dist = (rootPart.Position - targetPart.Position).Magnitude
     local timeToTravel = dist / farmSpeed
     
-    -- Trục Y = 10 giúp nhân vật đứng lơ lửng trên đầu, không sợ bị dính/kẹt vào quái
-    local targetCFrame = targetPart.CFrame + Vector3.new(0, 0, 6)
+    local targetCFrame = targetPart.CFrame * CFrame.new(0, 0, 4)
+    targetCFrame = CFrame.new(targetCFrame.Position, targetPart.Position)
+    
     local tween = TweenService:Create(rootPart, TweenInfo.new(timeToTravel, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
     tween:Play()
     
@@ -233,7 +257,7 @@ task.spawn(function()
     end
 end)
 
---// Vòng lặp Smart Auto Farm (Bám sát đỉnh đầu quái)
+--// Vòng lặp Smart Auto Farm (Bám sát sau lưng quái)
 task.spawn(function()
     while _G.UltimateGuiLoaded do
         if isAutoFarm then
@@ -249,7 +273,8 @@ task.spawn(function()
                         
                         while isAutoFarm and _G.UltimateGuiLoaded and mob.Parent ~= nil and h.Health > 0 do
                             if rootPart and r then 
-                                rootPart.CFrame = r.CFrame + Vector3.new(0, 0, 6) -- Giữ khoảng cách trên đầu quái
+                                local holdCFrame = r.CFrame * CFrame.new(0, 0, 4)
+                                rootPart.CFrame = CFrame.new(holdCFrame.Position, r.Position)
                             end
                             task.wait(0.1)
                         end
